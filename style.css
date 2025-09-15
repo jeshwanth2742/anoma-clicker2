@@ -35,6 +35,27 @@ body {
   transition: transform 0.1s ease, box-shadow 0.1s ease;
   box-shadow: 0 0 10px #0ff; /* neon cyan glow */
 }
+.target {
+  position: absolute;
+  cursor: pointer;
+  border-radius: 50%; /* round shape */
+  box-shadow: 0 0 15px 5px rgba(0, 255, 0, 0.7), /* green glow */
+              0 0 30px 15px rgba(0, 255, 0, 0.4);
+  transition: transform 0.3s ease;
+}
+
+.target.small {
+  width: 70px !important;  /* bigger small image */
+  height: 70px !important;
+}
+
+.target.bonus {
+  width: 90px !important;
+  height: 90px !important;
+  box-shadow: 0 0 20px 8px gold,
+              0 0 40px 20px gold;
+}
+
 
 /* --- Score & Timer --- */
 #score, #timer {
