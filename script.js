@@ -142,6 +142,26 @@ function saveScoreFirebase(name, score) {
     }
   }).finally(() => showLeaderboardFirebase());
 }
+// Handle wrong clicks
+gameArea.addEventListener("click", (event) => {
+  if (event.target !== target && timeLeft > 0) {
+    // Deduct points for wrong click
+    score = Math.max(0, score - 1);
+    scoreDisplay.textContent = `Score: ${score}`;
+    scoreDisplay.style.color = "#f00"; // red color for penalty
+    setTimeout(() => scoreDisplay.style.color = "#fff", 200);
+
+    // Floating feedback for penalty
+    const feedback = document.createElement("div");
+    feedback.className = "score-feedback penalty"; // create CSS for different style
+    feedback.textContent = "-1";
+    // Position where clicked
+    feedback.style.left = `${event.clientX}px`;
+    feedback.style.top = `${event.clientY}px`;
+    gameArea.appendChild(feedback);
+    setTimeout(() => feedback.remove(), 800);
+  }
+});
 
 // --- Show Leaderboard ---
 function showLeaderboardFirebase() {
