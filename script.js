@@ -17,11 +17,14 @@ let score = 0;
 let timeLeft = 60;
 let timerInterval;
 
-const disappearSmallTime = 1200; // ms for small image
-const disappearBonusTime = 1500; // ms for bonus image
+const disappearSmallTime = 1200; // Small target disappear time ms
+const disappearBonusTime = 1500; // Bonus target disappear time ms
 
 let smallTargetTimeout;
 let bonusTargetTimeout;
+
+let smallTargetPos = null;
+let bonusTargetPos = null;
 
 // --- Start Game ---
 startBtn.addEventListener("click", () => {
@@ -30,7 +33,7 @@ startBtn.addEventListener("click", () => {
     alert("Please enter your name!");
     return;
   }
-
+  console.clear();
   loginScreen.classList.add("hidden");
   gameScreen.classList.remove("hidden");
 
@@ -49,54 +52,8 @@ startBtn.addEventListener("click", () => {
   }, 1000);
 });
 
-// --- Spawn Small (+1) Target ---
-function spawnSmallTarget() {
-  clearSmallTarget();
-
-  const smallImg = document.createElement("img");
-  smallImg.src = "assets/anoma-logo.png.jpg";
-  smallImg.className = "target small";
-  setPositionRandomly(smallImg, 70);
-  gameArea.appendChild(smallImg);
-
-  smallImg.addEventListener("click", (e) => {
-    e.stopPropagation();
-    updateScore(1);
-    clearSmallTarget();
-    spawnSmallTarget();
-  });
-
-  smallTargetTimeout = setTimeout(() => {
-    clearSmallTarget();
-    if (timeLeft > 0) spawnSmallTarget();
-  }, disappearSmallTime);
-}
-
-// --- Spawn Bonus (+5) Target ---
-function spawnBonusTarget() {
-  clearBonusTarget();
-
-  const bonusImg = document.createElement("img");
-  bonusImg.src = "assets/nanoma-logo.png.jpg";
-  bonusImg.className = "target bonus";
-  setPositionRandomly(bonusImg, 90);
-  gameArea.appendChild(bonusImg);
-
-  bonusImg.addEventListener("click", (e) => {
-    e.stopPropagation();
-    updateScore(5);
-    clearBonusTarget();
-    spawnBonusTarget();
-  });
-
-  bonusTargetTimeout = setTimeout(() => {
-    clearBonusTarget();
-    if (timeLeft > 0) spawnBonusTarget();
-  }, disappearBonusTime);
-}
-
-// --- Set random position inside gameArea ---
-function setPositionRandomly(img, size) {
+// --- Position helper ---
+function getRandomPosition(size) {
   const buffer = 10;
   const areaWidth = gameArea.clientWidth;
   const areaHeight = gameArea.clientHeight;
@@ -107,29 +64,117 @@ function setPositionRandomly(img, size) {
   const x = Math.random() * maxX + buffer;
   const y = Math.random() * maxY + buffer;
 
+  return { x, y };
+}
+
+// --- Check overlap ---
+function isOverlapping(pos1, size1, pos2, size2) {
+  if (!pos1 || !pos2) return false;
+  return !(
+    pos1.x + size1 < pos2.x ||
+    pos1.x > pos2.x + size2 ||
+    pos1.y + size1 < pos2.y ||
+    pos1.y > pos2.y + size2
+  );
+}
+
+// --- Spawn Small Target ---
+function spawnSmallTarget() {
+  clearSmallTarget();
+  const size = 70;
+  let position;
+
+  // Generate non-overlapping position with bonus target
+  do {
+    position = getRandomPosition(size);
+  } while (isOverlapping(position, size, bonusTargetPos, 90));
+
+  smallTargetPos = position;
+
+  const smallImg = document.createElement("img");
+  smallImg.src = "assets/anoma-logo.png.jpg";
+  smallImg.className = "target small";
+  setStyle(smallImg, position.x, position.y, size);
+
+  smallImg.addEventListener("click", (e) => {
+    e.stopPropagation();
+    updateScore(1);
+    console.log("Small target clicked, +1");
+    clearSmallTarget();
+    spawnSmallTarget();
+  });
+
+  gameArea.appendChild(smallImg);
+  smallTargetTimeout = setTimeout(() => {
+    clearSmallTarget();
+    if (timeLeft > 0) spawnSmallTarget();
+  }, disappearSmallTime);
+}
+
+// --- Spawn Bonus Target ---
+function spawnBonusTarget() {
+  clearBonusTarget();
+  const size = 90;
+  let position;
+
+  // Generate non-overlapping position with small target
+  do {
+    position = getRandomPosition(size);
+  } while (isOverlapping(position, size, smallTargetPos, 70));
+
+  bonusTargetPos = position;
+
+  const bonusImg = document.createElement("img");
+  bonusImg.src = "assets/nanoma-logo.png.jpg";
+  bonusImg.className = "target bonus";
+  setStyle(bonusImg, position.x, position.y, size);
+
+  bonusImg.addEventListener("click", (e) => {
+    e.stopPropagation();
+    updateScore(5);
+    console.log("Bonus target clicked, +5");
+    clearBonusTarget();
+    spawnBonusTarget();
+  });
+
+  gameArea.appendChild(bonusImg);
+  bonusTargetTimeout = setTimeout(() => {
+    clearBonusTarget();
+    if (timeLeft > 0) spawnBonusTarget();
+  }, disappearBonusTime);
+}
+
+// --- Styling helper ---
+function setStyle(img, left, top, size) {
   img.style.position = "absolute";
-  img.style.left = `${x}px`;
-  img.style.top = `${y}px`;
+  img.style.left = `${left}px`;
+  img.style.top = `${top}px`;
   img.style.width = `${size}px`;
   img.style.height = "auto";
   img.style.borderRadius = "50%";
-  img.style.boxShadow = "0 0 15px 6px white";
   img.style.cursor = "pointer";
   img.style.transition = "transform 0.3s ease";
+  img.style.boxShadow = "0 0 10px 4px white";
 }
 
 // --- Clear small target ---
 function clearSmallTarget() {
   clearTimeout(smallTargetTimeout);
   const small = gameArea.querySelector(".small");
-  if (small) small.remove();
+  if (small) {
+    small.remove();
+  }
+  smallTargetPos = null;
 }
 
 // --- Clear bonus target ---
 function clearBonusTarget() {
   clearTimeout(bonusTargetTimeout);
   const bonus = gameArea.querySelector(".bonus");
-  if (bonus) bonus.remove();
+  if (bonus) {
+    bonus.remove();
+  }
+  bonusTargetPos = null;
 }
 
 // --- Update score ---
@@ -137,22 +182,24 @@ function updateScore(amount) {
   score += amount;
   if (score < 0) score = 0;
   scoreDisplay.textContent = `Score: ${score}`;
+  console.log(`Score updated: ${score}`);
 }
 
-// --- Clicking empty space penalty ---
+// --- Penalize on clicking empty space ---
 gameArea.addEventListener("click", () => {
   if (timeLeft > 0) {
     updateScore(-1);
+    console.log("Penalty: -1 point for empty space click");
   }
 });
 
-// --- End Game ---
+// --- End game ---
 function endGame() {
   clearInterval(timerInterval);
   clearSmallTarget();
   clearBonusTarget();
   gameScreen.classList.add("hidden");
   leaderboardScreen.classList.remove("hidden");
-  // Firebase or leaderboard logic
+  console.log("Game ended!");
+  // Integrate Firebase leaderboard or other end-game logic here
 }
-
