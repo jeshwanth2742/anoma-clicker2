@@ -8,198 +8,176 @@ const usernameInput = document.getElementById("username");
 const startBtn = document.getElementById("start-btn");
 const playAgainBtn = document.getElementById("play-again-btn");
 const restartBtn = document.getElementById("restart-btn");
+const target = document.getElementById("target");
 const gameArea = document.getElementById("game-area");
 const scoreDisplay = document.getElementById("score");
 const timerDisplay = document.getElementById("timer");
 const leaderboardList = document.getElementById("leaderboard-list");
 
+// --- Sounds ---
+const hitSound = new Audio("hit.mp3"); // optional
+
+// --- Game Variables ---
+let username = "";
 let score = 0;
-let timeLeft = 60;
+let timeLeft = 60; // 60 seconds game timer
 let timerInterval;
-
-const disappearSmallTime = 1200; // Small target disappear time ms
-const disappearBonusTime = 1500; // Bonus target disappear time ms
-
-let smallTargetTimeout;
-let bonusTargetTimeout;
-
-let smallTargetPos = null;
-let bonusTargetPos = null;
+let disappearTimeout;
+let disappearTime = 1000; // start at 1000 ms
 
 // --- Start Game ---
 startBtn.addEventListener("click", () => {
-  const username = usernameInput.value.trim();
-  if (!username) {
-    alert("Please enter your name!");
-    return;
-  }
-  console.clear();
+  username = usernameInput.value.trim();
+  if (!username) return alert("Please enter your name!");
+
   loginScreen.classList.add("hidden");
   gameScreen.classList.remove("hidden");
 
   score = 0;
   timeLeft = 60;
+  disappearTime = 1000;
   scoreDisplay.textContent = `Score: ${score}`;
   timerDisplay.textContent = `Time: ${timeLeft}s`;
 
-  spawnSmallTarget();
-  spawnBonusTarget();
+  moveTarget();
 
   timerInterval = setInterval(() => {
     timeLeft--;
     timerDisplay.textContent = `Time: ${timeLeft}s`;
+
+    // Gradually increase difficulty; don't go below 600 ms
+    if (timeLeft % 5 === 0 && disappearTime > 600) {
+      disappearTime -= 30;
+    }
+
     if (timeLeft <= 0) endGame();
   }, 1000);
 });
 
-// --- Position helper ---
-function getRandomPosition(size) {
-  const buffer = 10;
+// --- Restart / Play Again ---
+restartBtn.addEventListener("click", () => location.reload());
+playAgainBtn.addEventListener("click", () => location.reload());
+
+// --- Move target randomly, always fully visible ---
+function moveTarget() {
+  const buffer = 10; // padding from edges in px
   const areaWidth = gameArea.clientWidth;
   const areaHeight = gameArea.clientHeight;
+  const targetWidth = target.clientWidth;
+  const targetHeight = target.clientHeight;
 
-  const maxX = areaWidth - size - buffer;
-  const maxY = areaHeight - size - buffer;
+  const maxX = areaWidth - targetWidth - buffer;
+  const maxY = areaHeight - targetHeight - buffer;
+  const minX = buffer;
+  const minY = buffer;
 
-  const x = Math.random() * maxX + buffer;
-  const y = Math.random() * maxY + buffer;
-
-  return { x, y };
-}
-
-// --- Check overlap ---
-function isOverlapping(pos1, size1, pos2, size2) {
-  if (!pos1 || !pos2) return false;
-  return !(
-    pos1.x + size1 < pos2.x ||
-    pos1.x > pos2.x + size2 ||
-    pos1.y + size1 < pos2.y ||
-    pos1.y > pos2.y + size2
+  let x, y;
+  do {
+    x = Math.random() * (maxX - minX) + minX;
+    y = Math.random() * (maxY - minY) + minY;
+  } while (
+    target.dataset.lastX == x &&
+    target.dataset.lastY == y
   );
+
+  target.dataset.lastX = x;
+  target.dataset.lastY = y;
+
+  target.style.left = `${x}px`;
+  target.style.top = `${y}px`;
+  target.style.display = "block";
+  target.style.backgroundImage = "url('assets/preep-logo.png')";
+  target.style.backgroundColor = "transparent";
+  target.style.boxShadow = "0 0 10px #fff";
+  target.style.transform = "scale(0)";
+  setTimeout(() => target.style.transform = "scale(1)", 50);
+
+  clearTimeout(disappearTimeout);
+  disappearTimeout = setTimeout(() => {
+    target.style.display = "none";
+    if (timeLeft > 0) setTimeout(moveTarget, 200);
+  }, disappearTime);
 }
 
-// --- Spawn Small Target ---
-function spawnSmallTarget() {
-  clearSmallTarget();
-  const size = 70;
-  let position;
+// --- Target click ---
+target.addEventListener("click", () => {
+  target.style.display = "none";
+  clearTimeout(disappearTimeout);
 
-  // Generate non-overlapping position with bonus target
-  do {
-    position = getRandomPosition(size);
-  } while (isOverlapping(position, size, bonusTargetPos, 90));
+  // Floating feedback
+  const feedback = document.createElement("div");
+  feedback.className = "score-feedback";
+  feedback.textContent = "+1";
+  feedback.style.left = target.style.left;
+  feedback.style.top = target.style.top;
+  gameArea.appendChild(feedback);
+  setTimeout(() => feedback.remove(), 800);
 
-  smallTargetPos = position;
-
-  const smallImg = document.createElement("img");
-  smallImg.src = "assets/anoma-logo.png.jpg";
-  smallImg.className = "target small";
-  setStyle(smallImg, position.x, position.y, size);
-
-  smallImg.addEventListener("click", (e) => {
-    e.stopPropagation();
-    updateScore(1);
-    console.log("Small target clicked, +1");
-    clearSmallTarget();
-    spawnSmallTarget();
-  });
-
-  gameArea.appendChild(smallImg);
-  smallTargetTimeout = setTimeout(() => {
-    clearSmallTarget();
-    if (timeLeft > 0) spawnSmallTarget();
-  }, disappearSmallTime);
-}
-
-// --- Spawn Bonus Target ---
-function spawnBonusTarget() {
-  clearBonusTarget();
-  const size = 90;
-  let position;
-
-  // Generate non-overlapping position with small target
-  do {
-    position = getRandomPosition(size);
-  } while (isOverlapping(position, size, smallTargetPos, 70));
-
-  bonusTargetPos = position;
-
-  const bonusImg = document.createElement("img");
-  bonusImg.src = "assets/nanoma-logo.png.jpg";
-  bonusImg.className = "target bonus";
-  setStyle(bonusImg, position.x, position.y, size);
-
-  bonusImg.addEventListener("click", (e) => {
-    e.stopPropagation();
-    updateScore(5);
-    console.log("Bonus target clicked, +5");
-    clearBonusTarget();
-    spawnBonusTarget();
-  });
-
-  gameArea.appendChild(bonusImg);
-  bonusTargetTimeout = setTimeout(() => {
-    clearBonusTarget();
-    if (timeLeft > 0) spawnBonusTarget();
-  }, disappearBonusTime);
-}
-
-// --- Styling helper ---
-function setStyle(img, left, top, size) {
-  img.style.position = "absolute";
-  img.style.left = `${left}px`;
-  img.style.top = `${top}px`;
-  img.style.width = `${size}px`;
-  img.style.height = "auto";
-  img.style.borderRadius = "50%";
-  img.style.cursor = "pointer";
-  img.style.transition = "transform 0.3s ease";
-  img.style.boxShadow = "0 0 10px 4px white";
-}
-
-// --- Clear small target ---
-function clearSmallTarget() {
-  clearTimeout(smallTargetTimeout);
-  const small = gameArea.querySelector(".small");
-  if (small) {
-    small.remove();
-  }
-  smallTargetPos = null;
-}
-
-// --- Clear bonus target ---
-function clearBonusTarget() {
-  clearTimeout(bonusTargetTimeout);
-  const bonus = gameArea.querySelector(".bonus");
-  if (bonus) {
-    bonus.remove();
-  }
-  bonusTargetPos = null;
-}
-
-// --- Update score ---
-function updateScore(amount) {
-  score += amount;
-  if (score < 0) score = 0;
+  score++;
   scoreDisplay.textContent = `Score: ${score}`;
-  console.log(`Score updated: ${score}`);
+  scoreDisplay.style.color = "#0f0";
+  setTimeout(() => scoreDisplay.style.color = "#fff", 200);
+
+  target.style.transform = "scale(1.2)";
+  setTimeout(() => target.style.transform = "scale(1)", 100);
+
+  setTimeout(moveTarget, 100);
+});
+
+// --- End the game ---
+function endGame() {
+  clearInterval(timerInterval);
+  clearTimeout(disappearTimeout);
+  target.style.display = "none";
+  gameScreen.classList.add("hidden");
+  leaderboardScreen.classList.remove("hidden");
+  saveScoreFirebase(username, score);
+  firebase.analytics().logEvent('game_finished', { username, score });
 }
 
-// --- Penalize on clicking empty space ---
-gameArea.addEventListener("click", () => {
-  if (timeLeft > 0) {
-    updateScore(-1);
-    console.log("Penalty: -1 point for empty space click");
+// --- Save Score to Firebase ---
+function saveScoreFirebase(name, score) {
+  const userRef = firebase.firestore().collection("leaderboard").doc(name);
+  userRef.get().then((doc) => {
+    if (doc.exists) {
+      if (score > doc.data().score) userRef.set({ score });
+    } else {
+      userRef.set({ score });
+    }
+  }).finally(() => showLeaderboardFirebase());
+}
+
+// Handle wrong clicks
+gameArea.addEventListener("click", (event) => {
+  if (event.target !== target && timeLeft > 0) {
+    score = Math.max(0, score - 1);
+    scoreDisplay.textContent = `Score: ${score}`;
+    scoreDisplay.style.color = "#f00";
+    setTimeout(() => scoreDisplay.style.color = "#fff", 200);
+
+    const feedback = document.createElement("div");
+    feedback.className = "score-feedback penalty";
+    feedback.textContent = "-1";
+    feedback.style.left = `${event.clientX}px`;
+    feedback.style.top = `${event.clientY}px`;
+    gameArea.appendChild(feedback);
+    setTimeout(() => feedback.remove(), 800);
   }
 });
 
-// --- End game ---
-function endGame() {
-  clearInterval(timerInterval);
-  clearSmallTarget();
-  clearBonusTarget();
-  gameScreen.classList.add("hidden");
-  leaderboardScreen.classList.remove("hidden");
-  console.log("Game ended!");
-  // Integrate Firebase leaderboard or other end-game logic here
+// --- Show Leaderboard ---
+function showLeaderboardFirebase() {
+  firebase.firestore()
+    .collection("leaderboard")
+    .orderBy("score", "desc")
+    .limit(5)
+    .get()
+    .then((snapshot) => {
+      leaderboardList.innerHTML = "";
+      let rank = 1;
+      snapshot.forEach(doc => {
+        leaderboardList.innerHTML += `<li>${rank}. ${doc.id} - ${doc.data().score}</li>`;
+        rank++;
+      });
+    });
 }
