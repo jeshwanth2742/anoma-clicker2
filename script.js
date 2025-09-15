@@ -16,7 +16,8 @@ const leaderboardList = document.getElementById("leaderboard-list");
 let score = 0;
 let timeLeft = 60;
 let timerInterval;
-let disappearTime = 1000; // in ms
+
+const disappearTime = 1000; // 1000 ms disappear time fixed
 
 // --- Start Game ---
 startBtn.addEventListener("click", () => {
@@ -39,40 +40,35 @@ startBtn.addEventListener("click", () => {
   timerInterval = setInterval(() => {
     timeLeft--;
     timerDisplay.textContent = `Time: ${timeLeft}s`;
-
-    if (timeLeft <= 0) {
-      endGame();
-    }
+    if (timeLeft <= 0) endGame();
   }, 1000);
 });
 
-// --- Spawn target at random position ---
-// Randomly decides whether to show +1 or +5 image
+// --- Spawn target ---
 function spawnTarget() {
   clearTargets();
   const targetImg = document.createElement("img");
-  targetImg.style.position = "absolute";
-  targetImg.style.cursor = "pointer";
+  targetImg.classList.add("target");
 
-  // Decide type randomly: +5 target 20% chance, else +1
+  // Decide type: 20% chance for +5, else +1
   const isBonus = Math.random() < 0.2;
 
   if (isBonus) {
-    targetImg.src = "assets/nanoma-logo.png.jpg"; // +5 image
+    targetImg.src = "assets/nanoma-logo.png.jpg"; // +5 points image
     targetImg.dataset.points = "5";
+    targetImg.classList.add("bonus");
   } else {
-    targetImg.src = "assets/anoma-logo.png.jpg"; // +1 image
+    targetImg.src = "assets/anoma-logo.png.jpg"; // +1 points image
     targetImg.dataset.points = "1";
+    targetImg.classList.add("small");
   }
 
-  const size = isBonus ? 60 : 50; // bigger bonus target
-  targetImg.style.width = `${size}px`;
-  targetImg.style.height = "auto";
-
-  // Calculate random position within gameArea bounds
-  const buffer = 10; // padding in px
+  // Size and positioning
+  const buffer = 10;
   const areaWidth = gameArea.clientWidth;
   const areaHeight = gameArea.clientHeight;
+  const size = isBonus ? 90 : 70;
+
   const maxX = areaWidth - size - buffer;
   const maxY = areaHeight - size - buffer;
 
@@ -81,19 +77,22 @@ function spawnTarget() {
 
   targetImg.style.left = `${x}px`;
   targetImg.style.top = `${y}px`;
+  targetImg.style.position = "absolute";
+  targetImg.style.width = `${size}px`;
+  targetImg.style.height = "auto";
+  targetImg.style.cursor = "pointer";
 
-  // Add to game area
   gameArea.appendChild(targetImg);
 
-  // Target disappears after disappearTime ms
+  // Target disappears and respawns after disappearTime
   setTimeout(() => {
     clearTargets();
     if (timeLeft > 0) spawnTarget();
   }, disappearTime);
 
-  // Click listener for target
+  // Handling clicks on target image
   targetImg.addEventListener("click", (e) => {
-    e.stopPropagation(); // prevent triggering gameArea click
+    e.stopPropagation();
     const points = parseInt(targetImg.dataset.points);
     score += points;
     scoreDisplay.textContent = `Score: ${score}`;
@@ -102,14 +101,14 @@ function spawnTarget() {
   });
 }
 
-// --- Clear any existing targets ---
+// --- Clear existing targets ---
 function clearTargets() {
   while (gameArea.firstChild) {
     gameArea.removeChild(gameArea.firstChild);
   }
 }
 
-// --- Click on empty space penalty ---
+// --- Click penalty on empty area ---
 gameArea.addEventListener("click", (e) => {
   if (timeLeft > 0) {
     score = Math.max(0, score - 1);
@@ -123,5 +122,5 @@ function endGame() {
   clearTargets();
   gameScreen.classList.add("hidden");
   leaderboardScreen.classList.remove("hidden");
-  // Save score and show leaderboard logic here
+  // Add leaderboard saving code here if needed
 }
