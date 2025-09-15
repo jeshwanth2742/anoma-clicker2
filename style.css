@@ -112,7 +112,9 @@ button:hover {
   transition: all 0.2s ease;
   z-index: 1000;
 }
-
-
+.score-feedback.penalty {
+  color: #f00;
+  font-weight: bold;
+}
 /* --- Login / Leaderboard Screens --- */
 .hidden { display: none; }
