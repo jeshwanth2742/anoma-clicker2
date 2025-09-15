@@ -17,7 +17,11 @@ let score = 0;
 let timeLeft = 60;
 let timerInterval;
 
-const disappearTime = 1000; // 1000 ms disappear time fixed
+const disappearSmallTime = 1200; // ms for small image
+const disappearBonusTime = 1500; // ms for bonus image
+
+let smallTargetTimeout;
+let bonusTargetTimeout;
 
 // --- Start Game ---
 startBtn.addEventListener("click", () => {
@@ -35,7 +39,8 @@ startBtn.addEventListener("click", () => {
   scoreDisplay.textContent = `Score: ${score}`;
   timerDisplay.textContent = `Time: ${timeLeft}s`;
 
-  spawnTarget();
+  spawnSmallTarget();
+  spawnBonusTarget();
 
   timerInterval = setInterval(() => {
     timeLeft--;
@@ -44,30 +49,57 @@ startBtn.addEventListener("click", () => {
   }, 1000);
 });
 
-// --- Spawn target ---
-function spawnTarget() {
-  clearTargets();
-  const targetImg = document.createElement("img");
-  targetImg.classList.add("target");
+// --- Spawn Small (+1) Target ---
+function spawnSmallTarget() {
+  clearSmallTarget();
 
-  // Decide type: 20% chance for +5, else +1
-  const isBonus = Math.random() < 0.2;
+  const smallImg = document.createElement("img");
+  smallImg.src = "assets/anoma-logo.png.jpg";
+  smallImg.className = "target small";
+  setPositionRandomly(smallImg, 70);
+  gameArea.appendChild(smallImg);
 
-  if (isBonus) {
-    targetImg.src = "assets/nanoma-logo.png.jpg"; // +5 points image
-    targetImg.dataset.points = "5";
-    targetImg.classList.add("bonus");
-  } else {
-    targetImg.src = "assets/anoma-logo.png.jpg"; // +1 points image
-    targetImg.dataset.points = "1";
-    targetImg.classList.add("small");
-  }
+  smallImg.addEventListener("click", (e) => {
+    e.stopPropagation();
+    updateScore(1);
+    clearSmallTarget();
+    spawnSmallTarget();
+  });
 
-  // Size and positioning
+  smallTargetTimeout = setTimeout(() => {
+    clearSmallTarget();
+    if (timeLeft > 0) spawnSmallTarget();
+  }, disappearSmallTime);
+}
+
+// --- Spawn Bonus (+5) Target ---
+function spawnBonusTarget() {
+  clearBonusTarget();
+
+  const bonusImg = document.createElement("img");
+  bonusImg.src = "assets/nanoma-logo.png.jpg";
+  bonusImg.className = "target bonus";
+  setPositionRandomly(bonusImg, 90);
+  gameArea.appendChild(bonusImg);
+
+  bonusImg.addEventListener("click", (e) => {
+    e.stopPropagation();
+    updateScore(5);
+    clearBonusTarget();
+    spawnBonusTarget();
+  });
+
+  bonusTargetTimeout = setTimeout(() => {
+    clearBonusTarget();
+    if (timeLeft > 0) spawnBonusTarget();
+  }, disappearBonusTime);
+}
+
+// --- Set random position inside gameArea ---
+function setPositionRandomly(img, size) {
   const buffer = 10;
   const areaWidth = gameArea.clientWidth;
   const areaHeight = gameArea.clientHeight;
-  const size = isBonus ? 90 : 70;
 
   const maxX = areaWidth - size - buffer;
   const maxY = areaHeight - size - buffer;
@@ -75,52 +107,52 @@ function spawnTarget() {
   const x = Math.random() * maxX + buffer;
   const y = Math.random() * maxY + buffer;
 
-  targetImg.style.left = `${x}px`;
-  targetImg.style.top = `${y}px`;
-  targetImg.style.position = "absolute";
-  targetImg.style.width = `${size}px`;
-  targetImg.style.height = "auto";
-  targetImg.style.cursor = "pointer";
-
-  gameArea.appendChild(targetImg);
-
-  // Target disappears and respawns after disappearTime
-  setTimeout(() => {
-    clearTargets();
-    if (timeLeft > 0) spawnTarget();
-  }, disappearTime);
-
-  // Handling clicks on target image
-  targetImg.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const points = parseInt(targetImg.dataset.points);
-    score += points;
-    scoreDisplay.textContent = `Score: ${score}`;
-    clearTargets();
-    if (timeLeft > 0) spawnTarget();
-  });
+  img.style.position = "absolute";
+  img.style.left = `${x}px`;
+  img.style.top = `${y}px`;
+  img.style.width = `${size}px`;
+  img.style.height = "auto";
+  img.style.borderRadius = "50%";
+  img.style.boxShadow = "0 0 15px 6px white";
+  img.style.cursor = "pointer";
+  img.style.transition = "transform 0.3s ease";
 }
 
-// --- Clear existing targets ---
-function clearTargets() {
-  while (gameArea.firstChild) {
-    gameArea.removeChild(gameArea.firstChild);
-  }
+// --- Clear small target ---
+function clearSmallTarget() {
+  clearTimeout(smallTargetTimeout);
+  const small = gameArea.querySelector(".small");
+  if (small) small.remove();
 }
 
-// --- Click penalty on empty area ---
-gameArea.addEventListener("click", (e) => {
+// --- Clear bonus target ---
+function clearBonusTarget() {
+  clearTimeout(bonusTargetTimeout);
+  const bonus = gameArea.querySelector(".bonus");
+  if (bonus) bonus.remove();
+}
+
+// --- Update score ---
+function updateScore(amount) {
+  score += amount;
+  if (score < 0) score = 0;
+  scoreDisplay.textContent = `Score: ${score}`;
+}
+
+// --- Clicking empty space penalty ---
+gameArea.addEventListener("click", () => {
   if (timeLeft > 0) {
-    score = Math.max(0, score - 1);
-    scoreDisplay.textContent = `Score: ${score}`;
+    updateScore(-1);
   }
 });
 
-// --- End game ---
+// --- End Game ---
 function endGame() {
   clearInterval(timerInterval);
-  clearTargets();
+  clearSmallTarget();
+  clearBonusTarget();
   gameScreen.classList.add("hidden");
   leaderboardScreen.classList.remove("hidden");
-  // Add leaderboard saving code here if needed
+  // Firebase or leaderboard logic
 }
+
