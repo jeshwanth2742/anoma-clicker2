@@ -16,15 +16,15 @@ const timerDisplay = document.getElementById("timer");
 const leaderboardList = document.getElementById("leaderboard-list");
 
 // --- Sounds ---
-const hitSound = new Audio("hit.mp3");
+const hitSound = new Audio("hit.mp3"); // optional
 
 // --- Game Variables ---
 let username = "";
 let score = 0;
-let timeLeft = 60; // changed to 60 seconds
+let timeLeft = 60; // 60 seconds game timer
 let timerInterval;
 let disappearTimeout;
-let disappearTime = 700; // initial disappearance speed
+let disappearTime = 1000; // start at 1000 ms
 
 // --- Start Game ---
 startBtn.addEventListener("click", () => {
@@ -35,20 +35,20 @@ startBtn.addEventListener("click", () => {
   gameScreen.classList.remove("hidden");
 
   score = 0;
-  timeLeft = 60; // changed to 60 seconds
-  disappearTime = 700;
+  timeLeft = 60;
+  disappearTime = 1000;
   scoreDisplay.textContent = `Score: ${score}`;
   timerDisplay.textContent = `Time: ${timeLeft}s`;
 
-  moveTarget(); // start first target
+  moveTarget();
 
   timerInterval = setInterval(() => {
     timeLeft--;
     timerDisplay.textContent = `Time: ${timeLeft}s`;
 
-    // Gradually increase difficulty
-    if (timeLeft % 5 === 0 && disappearTime > 400) {
-      disappearTime -= 50;
+    // Gradually increase difficulty; don't go below 600 ms
+    if (timeLeft % 5 === 0 && disappearTime > 600) {
+      disappearTime -= 30;
     }
 
     if (timeLeft <= 0) endGame();
@@ -61,13 +61,12 @@ playAgainBtn.addEventListener("click", () => location.reload());
 
 // --- Move target randomly, always fully visible ---
 function moveTarget() {
-  const buffer = 10; // edge padding (px)
+  const buffer = 10; // padding from edges in px
   const areaWidth = gameArea.clientWidth;
   const areaHeight = gameArea.clientHeight;
   const targetWidth = target.clientWidth;
   const targetHeight = target.clientHeight;
 
-  // Calculate max/min positions
   const maxX = areaWidth - targetWidth - buffer;
   const maxY = areaHeight - targetHeight - buffer;
   const minX = buffer;
@@ -85,7 +84,6 @@ function moveTarget() {
   target.dataset.lastX = x;
   target.dataset.lastY = y;
 
-  // Apply position
   target.style.left = `${x}px`;
   target.style.top = `${y}px`;
   target.style.display = "block";
@@ -95,7 +93,6 @@ function moveTarget() {
   target.style.transform = "scale(0)";
   setTimeout(() => target.style.transform = "scale(1)", 50);
 
-  // Disappear after time
   clearTimeout(disappearTimeout);
   disappearTimeout = setTimeout(() => {
     target.style.display = "none";
